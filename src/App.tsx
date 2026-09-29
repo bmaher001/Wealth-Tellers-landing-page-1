@@ -345,6 +345,58 @@ function ExpertPortrait({
   );
 }
 
+function SignalMark({ name }: { name: "ownership" | "packages" | "remote" | "activities" }) {
+  const props = {
+    viewBox: "0 0 32 32",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.85,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+
+  if (name === "ownership") {
+    return (
+      <svg {...props}>
+        <path d="M5.5 27h21" />
+        <path d="M8 27V13.4L16 7l8 6.4V27" />
+        <path d="M13.2 27v-6.2h5.6V27" />
+        <path d="M11.2 16.4h2.3M18.5 16.4h2.3" />
+      </svg>
+    );
+  }
+
+  if (name === "packages") {
+    return (
+      <svg {...props}>
+        <path d="M6 13.1 16 8.2l10 4.9v10.2L16 28.2 6 23.3V13.1Z" />
+        <path d="M6 13.1 16 18.1l10-5" />
+        <path d="M16 18.1v10.1" />
+      </svg>
+    );
+  }
+
+  if (name === "remote") {
+    return (
+      <svg {...props}>
+        <circle cx="16" cy="16" r="9.4" />
+        <ellipse cx="16" cy="16" rx="4.5" ry="9.4" />
+        <path d="M6.6 16h18.8" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg {...props}>
+      <rect x="5.25" y="5.25" width="8.6" height="8.6" />
+      <rect x="18.15" y="5.25" width="8.6" height="8.6" />
+      <rect x="5.25" y="18.15" width="8.6" height="8.6" />
+      <rect x="18.15" y="18.15" width="8.6" height="8.6" />
+    </svg>
+  );
+}
+
 function Arrow() {
   return (
     <svg viewBox="0 0 20 20" aria-hidden="true">
@@ -718,23 +770,25 @@ function App() {
         <div className="signal-track" aria-label="Key benefits">
           {[
             {
-              key: "ownership",
+              key: "ownership" as const,
               figure: { from: 96, to: 100, suffix: "%", padded: true, duration: 900 },
-              label: " business ownership",
+              label: "Business ownership",
             },
-            { key: "packages", label: "Competitive setup packages" },
-            { key: "remote", label: "Effortless remote process" },
+            { key: "packages" as const, lead: "Competitive", label: "Setup packages" },
+            { key: "remote" as const, lead: "Effortless", label: "Remote process" },
             {
-              key: "activities",
+              key: "activities" as const,
               figure: { from: 2970, to: 3000, suffix: "+", group: true, duration: 1050 },
-              label: " business activities",
+              label: "Business activities",
             },
-          ].map((item, index) => (
-            <div className="signal-item" key={item.key}>
-              <span>0{index + 1}</span>
-              <strong>
+          ].map((item) => (
+            <article className="signal-item" key={item.key}>
+              <span className="signal-icon">
+                <SignalMark name={item.key} />
+              </span>
+              <p className={`signal-lead${item.figure ? "" : " is-word"}`}>
                 {item.figure ? (
-                  <>
+                  <span className="signal-stat">
                     <SettleFigure
                       from={item.figure.from}
                       to={item.figure.to}
@@ -743,13 +797,13 @@ function App() {
                       padded={item.figure.padded}
                     />
                     {item.figure.suffix}
-                    {item.label}
-                  </>
+                  </span>
                 ) : (
-                  item.label
+                  item.lead
                 )}
-              </strong>
-            </div>
+              </p>
+              <p className="signal-label">{item.label}</p>
+            </article>
           ))}
         </div>
         <div className="editorial-statement" data-reveal>
