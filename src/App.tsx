@@ -1,5 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 
+const asset = (path: string) => `${import.meta.env.BASE_URL}${path}`;
+
 const skyline =
   "https://images.unsplash.com/flagged/photo-1559717201-fbb671ff56b7?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&q=88&w=2200";
 const tower =
@@ -74,77 +76,77 @@ const experts = [
   {
     name: "Natalia Davydova",
     role: "HNWI Division Director",
-    image: "/assets/team/01.jpg",
+    image: asset("assets/team/01.jpg"),
   },
   {
     name: "Ramy Ahmed",
     role: "MENA Region Head — Private Client Services",
-    image: "/assets/team/02.jpg",
+    image: asset("assets/team/02.jpg"),
   },
   {
     name: "Rana Shetiwy",
     role: "Operations Director",
-    image: "/assets/team/03.jpg",
+    image: asset("assets/team/03.jpg"),
   },
   {
     name: "Thamseer Veettil",
     role: "COO",
-    image: "/assets/team/04.jpg",
+    image: asset("assets/team/04.jpg"),
   },
   {
     name: "Likhith Raj Mijar",
     role: "System Administrator",
-    image: "/assets/team/05.jpg",
+    image: asset("assets/team/05.jpg"),
   },
   {
     name: "Asmaa Fouad",
     role: "HR Manager",
-    image: "/assets/team/06.jpg",
+    image: asset("assets/team/06.jpg"),
   },
   {
     name: "Karen",
     role: "Operation Coordinator",
-    image: "/assets/team/07.jpg",
+    image: asset("assets/team/07.jpg"),
   },
   {
     name: "Grenville Fernandes",
     role: "Business Setup Advisor",
-    image: "/assets/team/08.jpg",
+    image: asset("assets/team/08.jpg"),
   },
   {
     name: "Arbaz Shaikh",
     role: "Business Setup Advisor",
-    image: "/assets/team/09.jpg",
+    image: asset("assets/team/09.jpg"),
   },
   {
     name: "Asif Palliyalil Mohammed",
     role: "Head of Finance",
-    image: "/assets/team/10.jpg",
+    image: asset("assets/team/10.jpg"),
   },
   {
     name: "Muhamed Hamza",
     role: "Business Setup Advisor",
-    image: "/assets/team/11.jpg",
+    image: asset("assets/team/11.jpg"),
   },
   {
     name: "Mohamed Magdi",
     role: "Public Relations Manager",
-    image: "/assets/team/12.jpg",
+    image: asset("assets/team/12.jpg"),
   },
   {
     name: "Shahzeb Sehar",
     role: "Relationship Manager",
-    image: "/assets/team/13.jpg",
+    image: asset("assets/team/13.jpg"),
   },
   {
     name: "Andrii Poiendynok",
     role: "Legal Director",
-    image: "/assets/team/14.jpg",
+    image: asset("assets/team/14.jpg"),
   },
   {
     name: "Khalid Hassan",
     role: "Sales Manager",
-    image: "/assets/team/15.jpg",
+    image: asset("assets/team/15.jpg"),
   },
 ];
 
@@ -175,8 +177,172 @@ const faqs = [
   ],
 ];
 
-function revealDelay(index: number, step = 60) {
-  return { "--reveal-delay": `${index * step}ms` } as React.CSSProperties;
+function formatCount(value: number, group: boolean) {
+  return group ? value.toLocaleString("en-US") : String(value);
+}
+
+function SettleFigure({
+  from,
+  to,
+  group = false,
+  duration = 1000,
+  offer = false,
+  padded = false,
+}: {
+  from: number;
+  to: number;
+  group?: boolean;
+  duration?: number;
+  offer?: boolean;
+  padded?: boolean;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [value, setValue] = useState(from);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) {
+      setValue(to);
+      return;
+    }
+
+    let frame = 0;
+    let played = false;
+
+    const play = () => {
+      if (played) return;
+      played = true;
+      const start = performance.now();
+      let lastPaint = 0;
+      let shown = from;
+
+      const tick = (now: number) => {
+        const progress = Math.min(1, (now - start) / duration);
+        const eased = 1 - (1 - progress) ** 3;
+        const next = progress === 1 ? to : Math.round(from + (to - from) * eased);
+        if (progress === 1 || now - lastPaint >= 70) {
+          if (next !== shown) {
+            shown = next;
+            setValue(next);
+          }
+          lastPaint = now;
+        }
+        if (progress < 1) frame = requestAnimationFrame(tick);
+        else setValue(to);
+      };
+
+      frame = requestAnimationFrame(tick);
+    };
+
+    const finish = () => {
+      if (played) return;
+      played = true;
+      setValue(to);
+    };
+
+    const check = () => {
+      const rect = node.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) return false;
+      if (rect.bottom < 24) {
+        finish();
+        return true;
+      }
+      if (rect.top < window.innerHeight * 0.9) {
+        play();
+        return true;
+      }
+      return false;
+    };
+
+    if (check()) {
+      return () => cancelAnimationFrame(frame);
+    }
+
+    const onScroll = () => {
+      if (check()) window.removeEventListener("scroll", onScroll);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(frame);
+    };
+  }, [from, to, duration]);
+
+  const className = `settle-figure${offer ? " offer-value" : ""}${padded ? " is-padded" : ""}`;
+
+  return (
+    <span ref={ref} className={className} aria-label={formatCount(to, group)}>
+      <span aria-hidden="true">{formatCount(value, group)}</span>
+    </span>
+  );
+}
+
+function ExpertPortrait({
+  expert,
+  index,
+}: {
+  expert: (typeof experts)[number];
+  index: number;
+}) {
+  const [current, setCurrent] = useState(index);
+  const [incoming, setIncoming] = useState<number | null>(null);
+  const reduced = useRef(false);
+
+  useEffect(() => {
+    reduced.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }, []);
+
+  useEffect(() => {
+    if (reduced.current) {
+      setCurrent(index);
+      setIncoming(null);
+      return;
+    }
+    if (index === current) {
+      setIncoming(null);
+      return;
+    }
+    setIncoming(index);
+    const timeout = window.setTimeout(() => {
+      setCurrent(index);
+      setIncoming(null);
+    }, 560);
+    return () => window.clearTimeout(timeout);
+  }, [index, current]);
+
+  return (
+    <div className="expert-portrait">
+      <img src={experts[current].image} alt="" />
+      {incoming !== null && incoming !== current && (
+        <img
+          className="is-incoming"
+          src={experts[incoming].image}
+          alt=""
+          key={incoming}
+          onAnimationEnd={() => {
+            setCurrent(incoming);
+            setIncoming(null);
+          }}
+        />
+      )}
+      <div className="portrait-wash" />
+      <div className="portrait-index">
+        <span>{String(index + 1).padStart(2, "0")}</span>
+        <i />
+        <span>{String(experts.length).padStart(2, "0")}</span>
+      </div>
+      <div className="expert-identity glass-dark">
+        <span>Wealth Tellers</span>
+        <div className="identity-text" key={expert.name} aria-live="polite">
+          <h3>{expert.name}</h3>
+          <p>{expert.role}</p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function Arrow() {
@@ -190,7 +356,7 @@ function Arrow() {
 function BrandMark({ dark = false }: { dark?: boolean }) {
   return (
     <a className={`brand ${dark ? "brand-dark" : ""}`} href="#top" aria-label="Wealth Tellers home">
-      <img src="/assets/wealth-tellers-logo.png" alt="Wealth Tellers" />
+      <img src={asset("assets/wealth-tellers-logo.png")} alt="Wealth Tellers" />
     </a>
   );
 }
@@ -205,64 +371,202 @@ function App() {
   const [submitted, setSubmitted] = useState(false);
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const heroRef = useRef<HTMLElement>(null);
+  const processRef = useRef<HTMLElement>(null);
+  const processStepRefs = useRef<(HTMLElement | null)[]>([]);
+  const calculatorSceneRef = useRef<HTMLElement>(null);
   const calculatorButtonRef = useRef<HTMLButtonElement>(null);
   const closeCalculatorRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const revealNodes = document.querySelectorAll(".reveal, .reveal-compose, .reveal-media");
-    const depthNodes = Array.from(document.querySelectorAll<HTMLElement>("[data-depth]"));
-    let parallaxFrame = 0;
-    let observer: IntersectionObserver | undefined;
+    const reduced = motionQuery.matches;
 
-    if (motionQuery.matches) {
-      revealNodes.forEach((node) => node.classList.add("is-visible"));
+    const readProgress = () => {
+      const range = document.documentElement.scrollHeight - window.innerHeight;
+      return range > 0 ? window.scrollY / range : 0;
+    };
+
+    const applyLine = (value: number) => {
+      document.documentElement.style.setProperty("--scroll-progress", value.toFixed(4));
+    };
+
+    const processTarget = () => {
+      const root = processRef.current;
+      const list = root?.querySelector<HTMLElement>(".process-steps");
+      if (!list) return 0;
+      const rect = list.getBoundingClientRect();
+      const viewport = window.innerHeight;
+      const start = viewport * 0.78;
+      const span = Math.max(rect.height * 0.92, viewport * 0.42);
+      return Math.min(1, Math.max(0, (start - rect.top) / span));
+    };
+
+    const applyProcess = (value: number) => {
+      const root = processRef.current;
+      const nodes = processStepRefs.current.filter((node): node is HTMLElement => Boolean(node));
+      if (!root || nodes.length === 0) return;
+      if (reduced) {
+        nodes.forEach((node) => node.style.removeProperty("--focus"));
+        return;
+      }
+      const list = root.querySelector<HTMLElement>(".process-steps");
+      if (!list) return;
+      const max = nodes.length - 1;
+      const position = value * max;
+      const listTop = list.getBoundingClientRect().top;
+      const tops = nodes.map((node) => node.getBoundingClientRect().top - listTop);
+      const index = Math.min(max, Math.max(0, Math.floor(position)));
+      const fraction = position - index;
+      const nextTop = tops[Math.min(index + 1, max)] ?? tops[index] ?? 0;
+      const accent = (tops[index] ?? 0) + (nextTop - (tops[index] ?? 0)) * fraction;
+      list.style.setProperty("--accent-y", `${accent.toFixed(2)}px`);
+      nodes.forEach((node, step) => {
+        const focus = Math.max(0, 1 - Math.abs(step - position));
+        node.style.setProperty("--focus", focus.toFixed(3));
+      });
+    };
+
+    const updateHero = () => {
+      const compact = window.scrollY > 60;
+      setScrolled((current) => (current === compact ? current : compact));
+
+      const hero = heroRef.current;
+      if (hero) {
+        const progress = Math.min(window.scrollY / (window.innerHeight * 0.85), 1);
+        hero.style.setProperty("--hero-progress", reduced ? "0" : String(progress));
+      }
+
+      if (reduced) return;
+      const viewport = window.innerHeight;
+      document.querySelectorAll<HTMLElement>("[data-scene]").forEach((node) => {
+        const rect = node.getBoundingClientRect();
+        if (rect.bottom < -80 || rect.top > viewport + 80) return;
+        const shift = ((viewport * 0.5 - (rect.top + rect.height * 0.5)) / viewport) * 22;
+        node.style.setProperty("--scene-shift", `${shift.toFixed(2)}px`);
+      });
+    };
+
+    let line = 0;
+    let flow = 0;
+    let timer = 0;
+
+    const step = () => {
+      timer = 0;
+      const lineTarget = readProgress();
+      const flowTarget = reduced ? 0 : processTarget();
+      line += (lineTarget - line) * (reduced ? 1 : 0.34);
+      flow += (flowTarget - flow) * (reduced ? 1 : 0.28);
+      if (Math.abs(lineTarget - line) < 0.001) line = lineTarget;
+      if (Math.abs(flowTarget - flow) < 0.001) flow = flowTarget;
+      applyLine(line);
+      if (!reduced) applyProcess(flow);
+      if (line !== lineTarget || flow !== flowTarget) timer = window.setTimeout(step, 16);
+    };
+
+    const onScroll = () => {
+      updateHero();
+      window.clearTimeout(timer);
+      timer = 0;
+      step();
+    };
+
+    const revealNodes = document.querySelectorAll<HTMLElement>("[data-reveal]");
+    let observer: IntersectionObserver | undefined;
+    let costFrame = 0;
+    let costTimer = 0;
+    const costScene = calculatorSceneRef.current;
+
+    const playCostDigits = () => {
+      const tail = costScene?.querySelector<HTMLElement>(".cost-tail");
+      if (!tail) return;
+      const from = 60;
+      const to = 88;
+      const duration = 820;
+      const start = performance.now();
+      let lastPaint = 0;
+      let shown = from;
+      tail.textContent = String(from);
+
+      const tick = (now: number) => {
+        const progress = Math.min(1, (now - start) / duration);
+        const eased = 1 - (1 - progress) ** 3;
+        const next = progress === 1 ? to : Math.round(from + (to - from) * eased);
+        if (progress === 1 || now - lastPaint >= 90) {
+          if (next !== shown) {
+            shown = next;
+            tail.textContent = String(next);
+          }
+          lastPaint = now;
+        }
+        if (progress < 1) costFrame = requestAnimationFrame(tick);
+        else tail.textContent = String(to);
+      };
+
+      costFrame = requestAnimationFrame(tick);
+    };
+
+    const enterCost = () => {
+      if (!costScene || costScene.classList.contains("is-in")) return true;
+      const rect = costScene.getBoundingClientRect();
+      if (rect.height === 0) return false;
+      const visible = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
+      const ratio = visible / rect.height;
+      const alreadyPassed = rect.bottom < 24;
+      if (!alreadyPassed && ratio < 0.27) return false;
+      if (alreadyPassed) {
+        const tail = costScene.querySelector(".cost-tail");
+        if (tail) tail.textContent = "88";
+      }
+      costScene.classList.add("is-in");
+      if (!reduced && !alreadyPassed) {
+        costTimer = window.setTimeout(playCostDigits, 360);
+      }
+      return true;
+    };
+
+    const onCostScroll = () => {
+      if (enterCost()) window.removeEventListener("scroll", onCostScroll);
+    };
+    if (reduced) {
+      revealNodes.forEach((node) => node.classList.add("is-in"));
     } else {
       observer = new IntersectionObserver(
         (entries) => {
           entries.forEach((entry) => {
             if (!entry.isIntersecting) return;
-            entry.target.classList.add("is-visible");
+            entry.target.classList.add("is-in");
             observer?.unobserve(entry.target);
           });
         },
-        { threshold: 0.18 },
+        { threshold: 0.18, rootMargin: "0px 0px -4% 0px" },
       );
       revealNodes.forEach((node) => observer?.observe(node));
     }
 
-    const updateDepth = () => {
-      const viewport = window.innerHeight;
-      depthNodes.forEach((node) => {
-        const rect = node.getBoundingClientRect();
-        if (rect.bottom < -40 || rect.top > viewport + 40) return;
-        const amount = Number(node.dataset.depth || "8");
-        const progress = (viewport - rect.top) / (viewport + rect.height);
-        const shift = Math.max(-amount, Math.min(amount, (0.5 - progress) * amount));
-        node.style.setProperty("--depth-shift", `${shift.toFixed(2)}px`);
-      });
-    };
-
-    const onScroll = () => {
-      setScrolled(window.scrollY > 60);
-      const progress = Math.min(window.scrollY / (window.innerHeight * 0.85), 1);
-      heroRef.current?.style.setProperty("--hero-progress", String(progress));
-      const range = document.body.scrollHeight - window.innerHeight;
-      document.documentElement.style.setProperty(
-        "--scroll-progress",
-        String(range > 0 ? window.scrollY / range : 0),
-      );
-      if (motionQuery.matches || depthNodes.length === 0) return;
-      cancelAnimationFrame(parallaxFrame);
-      parallaxFrame = requestAnimationFrame(updateDepth);
-    };
+    if (costScene) {
+      if (reduced) {
+        costScene.classList.add("is-in");
+      } else {
+        const tail = costScene.querySelector(".cost-tail");
+        if (tail) tail.textContent = "60";
+        costScene.classList.add("is-armed");
+        requestAnimationFrame(() => {
+          if (!enterCost()) window.addEventListener("scroll", onCostScroll, { passive: true });
+        });
+      }
+    }
 
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
     return () => {
       window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      window.clearTimeout(timer);
+      window.clearTimeout(costTimer);
+      cancelAnimationFrame(costFrame);
+      window.removeEventListener("scroll", onCostScroll);
       observer?.disconnect();
-      cancelAnimationFrame(parallaxFrame);
     };
   }, []);
 
@@ -343,13 +647,13 @@ function App() {
             </a>
           </div>
           <a className="nav-cta magnetic" href="#consultation">
-            <span>Talk to an advisor</span>
+            <span>Talk to us</span>
             <Arrow />
           </a>
         </nav>
       </header>
 
-      <section className="hero" ref={heroRef} onPointerMove={handleGlow}>
+      <section className="hero" ref={heroRef}>
         <div className="hero-image" style={{ backgroundImage: `url(${skyline})` }} />
         <div className="hero-grain" />
         <div className="hero-glow" />
@@ -359,7 +663,9 @@ function App() {
             <span>Dubai · United Arab Emirates</span>
           </div>
           <h1 className="hero-title">
-            <span className="title-line">Build in Dubai.</span>
+            <span className="title-mask">
+              <span className="title-line">Build in Dubai.</span>
+            </span>
             <span className="title-line title-serif">Own what’s next.</span>
           </h1>
           <div className="hero-bottom">
@@ -411,25 +717,48 @@ function App() {
       <section className="signal-scene">
         <div className="signal-track" aria-label="Key benefits">
           {[
-            "100% business ownership",
-            "Competitive setup packages",
-            "Effortless remote process",
-            "3,000+ business activities",
+            {
+              key: "ownership",
+              figure: { from: 96, to: 100, suffix: "%", padded: true, duration: 900 },
+              label: " business ownership",
+            },
+            { key: "packages", label: "Competitive setup packages" },
+            { key: "remote", label: "Effortless remote process" },
+            {
+              key: "activities",
+              figure: { from: 2970, to: 3000, suffix: "+", group: true, duration: 1050 },
+              label: " business activities",
+            },
           ].map((item, index) => (
-            <div className="signal-item reveal" key={item} style={revealDelay(index, 70)}>
+            <div className="signal-item" key={item.key}>
               <span>0{index + 1}</span>
-              <strong>{item}</strong>
+              <strong>
+                {item.figure ? (
+                  <>
+                    <SettleFigure
+                      from={item.figure.from}
+                      to={item.figure.to}
+                      group={item.figure.group}
+                      duration={item.figure.duration}
+                      padded={item.figure.padded}
+                    />
+                    {item.figure.suffix}
+                    {item.label}
+                  </>
+                ) : (
+                  item.label
+                )}
+              </strong>
             </div>
           ))}
         </div>
-        <div className="editorial-statement reveal-compose">
-          <span className="section-label reveal-item">A clearer route to the UAE</span>
-          <h2 className="reveal-item">
-            Ambition moves fast.
-            <br />
-            <em>Your setup should too.</em>
+        <div className="editorial-statement" data-reveal>
+          <span className="section-label copy-in">A clearer route to the UAE</span>
+          <h2 className="heading-clip">
+            <span className="clip-line"><span>Ambition moves fast.</span></span>
+            <span className="clip-line"><span><em>Your setup should too.</em></span></span>
           </h2>
-          <p className="reveal-item">
+          <p className="copy-in">
             Setting up a UAE Free Zone company or applying for a trade license should feel
             effortless and secure. We make it so.
           </p>
@@ -437,33 +766,38 @@ function App() {
       </section>
 
       <section className="image-expanse">
-        <div className="expanse-image reveal-media" style={{ backgroundImage: `url(${tower})` }} />
+        <div className="expanse-image" style={{ backgroundImage: `url(${tower})` }} />
         <div className="expanse-overlay" />
         <p className="vertical-caption">Dubai · Designed for possibility</p>
-        <div className="expanse-copy reveal-compose">
-          <span className="reveal-item">From just</span>
-          <strong className="reveal-item">
-            AED <b>4,888</b>
+        <div className="expanse-copy" data-reveal>
+          <span className="copy-in">From just</span>
+          <strong>
+            AED <SettleFigure from={4860} to={4888} group duration={1100} offer />
           </strong>
-          <p className="reveal-item">Limited-time business setup offer</p>
-          <a className="button button-light reveal-item" href="#consultation">
+          <p className="copy-in">Limited-time business setup offer</p>
+          <a className="button button-light copy-in" href="#consultation">
             Claim the offer <Arrow />
           </a>
         </div>
       </section>
 
       <section className="structures" id="structures">
-        <div className="structures-intro reveal-compose">
-          <span className="section-label reveal-item">Choose your structure</span>
-          <h2 className="reveal-item">One destination.<br />Three strategic routes.</h2>
-          <p className="reveal-item">
+        <div className="structures-intro" data-reveal>
+          <span className="section-label copy-in">Choose your structure</span>
+          <h2 className="heading-glide">One destination.<br />Three strategic routes.</h2>
+          <p className="copy-in">
             We help you explore the most effective setup options in the UAE and guide you
             through every step.
           </p>
         </div>
         <div className="structure-list">
           {structures.map((item, index) => (
-            <article className="structure-row reveal" key={item.title} style={revealDelay(index, 75)}>
+            <article
+              className="structure-row"
+              key={item.title}
+              data-reveal
+              style={{ "--reveal-delay": `${index * 90}ms` } as React.CSSProperties}
+            >
               <span className="structure-code">{item.code}</span>
               <h3>{item.title}</h3>
               <div>
@@ -480,11 +814,11 @@ function App() {
         </div>
       </section>
 
-      <section className="process-scene" id="process">
-        <div className="process-photo reveal-media" style={{ backgroundImage: `url(${boardroom})` }}>
-          <div className="process-heading reveal-compose">
-            <span className="section-label reveal-item">The Wealth Tellers method</span>
-            <h2 className="reveal-item">From idea<br />to license.</h2>
+      <section className="process-scene" id="process" ref={processRef}>
+        <div className="process-photo" style={{ backgroundImage: `url(${boardroom})` }}>
+          <div className="process-heading" data-reveal>
+            <span className="section-label copy-in">The Wealth Tellers method</span>
+            <h2 className="heading-rise">From idea<br />to license.</h2>
           </div>
         </div>
         <div className="process-panel glass-dark" onPointerMove={handleGlow}>
@@ -492,55 +826,43 @@ function App() {
             <span>Streamlined setup process</span>
             <span>04 steps</span>
           </div>
-          {steps.map(([title, description], index) => (
-            <article className="process-step reveal" key={title} style={revealDelay(index, 60)}>
-              <span>0{index + 1}</span>
-              <h3>{title}</h3>
-              <p>{description}</p>
-            </article>
-          ))}
-          <a className="button button-gold reveal" href="#consultation" style={revealDelay(4, 60)}>
+          <div className="process-steps">
+            <div className="process-accent" aria-hidden="true" />
+            {steps.map(([title, description], index) => (
+              <article
+                className="process-step"
+                key={title}
+                ref={(node) => {
+                  processStepRefs.current[index] = node;
+                }}
+              >
+                <span>0{index + 1}</span>
+                <h3>{title}</h3>
+                <p>{description}</p>
+              </article>
+            ))}
+          </div>
+          <a className="button button-gold" href="#consultation">
             Start your UAE journey <Arrow />
           </a>
         </div>
       </section>
 
-      <section className="experts-scene" id="experts" data-depth="6">
+      <section className="experts-scene" id="experts">
         <div className="experts-stage">
-          <div className="expert-portrait reveal-media" aria-live="polite">
-            {experts.map((expert, index) => (
-              <img
-                className={displayedExpert === index ? "is-active" : ""}
-                src={expert.image}
-                alt={expert.name}
-                loading={index === 0 ? "eager" : "lazy"}
-                key={expert.name}
-              />
-            ))}
-            <div className="portrait-wash" />
-            <div className="portrait-index">
-              <span>{String(displayedExpert + 1).padStart(2, "0")}</span>
-              <i />
-              <span>{String(experts.length).padStart(2, "0")}</span>
-            </div>
-            <div className="expert-identity glass-dark">
-              <span>Wealth Tellers</span>
-              <h3 key={`name-${displayedExpert}`}>{experts[displayedExpert].name}</h3>
-              <p key={`role-${displayedExpert}`}>{experts[displayedExpert].role}</p>
-            </div>
-          </div>
+          <ExpertPortrait expert={experts[displayedExpert]} index={displayedExpert} />
 
           <div className="expert-column">
-            <div className="experts-heading reveal-compose">
-              <span className="section-label reveal-item">The people behind the process</span>
-              <h2 className="reveal-item">Meet the<br /><em>experts.</em></h2>
-              <p className="reveal-item">
+            <div className="experts-heading" data-reveal>
+              <span className="section-label copy-in">The people behind the process</span>
+              <h2 className="heading-rise">Meet the<br /><em>experts.</em></h2>
+              <p className="copy-in">
                 Realize your business goals in the UAE with a team of seasoned professionals
                 behind you. Having decades of combined experience, these innovators and expert
                 strategists can transform your ideas into measurable success.
               </p>
             </div>
-            <div className="expert-directory reveal" style={revealDelay(2, 70)}>
+            <div className="expert-directory">
             <div className="expert-mobile-controls">
               <button
                 type="button"
@@ -594,49 +916,53 @@ function App() {
         </div>
       </section>
 
-      <section className="calculator-scene">
-        <div className="calculator-orbit" data-depth="8" aria-hidden="true">
+      <section className="calculator-scene" ref={calculatorSceneRef}>
+        <div className="calculator-orbit" aria-hidden="true">
           <span />
           <span />
         </div>
-        <div className="calculator-copy reveal-compose">
-          <span className="section-label reveal-item">Know before you launch</span>
-          <h2 className="reveal-item">Your UAE setup cost, made clear.</h2>
-          <p className="reveal-item">
+        <div className="calculator-copy">
+          <span className="section-label cost-kicker">Know before you launch</span>
+          <h2 className="cost-title" aria-label="Your UAE setup cost, made clear.">
+            <span className="cost-mask"><span>Your UAE setup</span></span>
+            <span className="cost-mask"><span>cost, made</span></span>
+            <span className="cost-mask"><span>clear.</span></span>
+          </h2>
+          <p className="cost-copy">
             Get a fast, precise and completely free estimate including license type,
             residency and core fees.
           </p>
-          <ul className="reveal-item">
+          <ul className="cost-pills">
             <li>2-minute estimate</li>
             <li>Transparent pricing</li>
             <li>Mainland & Free Zone options</li>
           </ul>
           <button
             ref={calculatorButtonRef}
-            className="button button-ink reveal-item"
+            className="button button-ink cost-action"
             type="button"
             onClick={() => setCalculatorOpen(true)}
           >
             Try the cost calculator <Arrow />
           </button>
-          <small className="reveal-item">Final pricing may vary based on activity, approvals and facility requirements.</small>
+          <small className="cost-fine">Final pricing may vary based on activity, approvals and facility requirements.</small>
         </div>
-        <div className="calculator-figure reveal" aria-hidden="true" style={revealDelay(1, 90)}>
-          <span>AED</span>
-          <strong>4,888</strong>
+        <div className="calculator-figure" aria-hidden="true">
+          <span className="cost-currency">AED</span>
+          <strong className="cost-amount">4,8<span className="cost-tail">88</span></strong>
           <div className="calc-rule"><i /></div>
-          <p>Indicative starting offer</p>
+          <p className="cost-caption">Indicative starting offer</p>
         </div>
       </section>
 
       <section className="pricing-scene" id="packages">
-        <div className="pricing-heading reveal-compose">
-          <span className="section-label reveal-item">Limited-time packages</span>
-          <h2 className="reveal-item">Built for your<br /><em>next chapter.</em></h2>
-          <p className="reveal-item">Exclusive license packages designed for every entrepreneur.</p>
+        <div className="pricing-heading" data-reveal>
+          <span className="section-label copy-in">Limited-time packages</span>
+          <h2 className="heading-rise">Built for your<br /><em>next chapter.</em></h2>
+          <p className="copy-in">Exclusive license packages designed for every entrepreneur.</p>
         </div>
         <div
-          className={`pricing-stage glass-dark is-${activePlan} reveal`}
+          className={`pricing-stage glass-dark is-${activePlan}`}
           onPointerMove={handleGlow}
         >
           <div className="plan-tabs" role="tablist" aria-label="Business setup packages">
@@ -686,8 +1012,8 @@ function App() {
               </a>
             </div>
             <ul className="plan-features">
-              {features.map((feature, index) => (
-                <li key={feature} style={{ "--delay": `${index * 45}ms` } as React.CSSProperties}>
+              {features.map((feature) => (
+                <li key={feature}>
                   <span>✓</span>{feature}
                 </li>
               ))}
@@ -698,14 +1024,14 @@ function App() {
       </section>
 
       <section className="proof-scene">
-        <div className="proof-image reveal-media" style={{ backgroundImage: `url(${cityNight})` }} />
+        <div className="proof-image" style={{ backgroundImage: `url(${cityNight})` }} />
         <div className="proof-shade" />
-        <div className="proof-copy reveal-compose">
-          <div className="stars reveal-item">★★★★★</div>
-          <blockquote className="reveal-item">
+        <div className="proof-copy" data-reveal>
+          <div className="stars copy-in">★★★★★</div>
+          <blockquote className="heading-rise">
             “Expert guidance, transparent pricing, and a partner you can trust.”
           </blockquote>
-          <div className="proof-meta reveal-item">
+          <div className="proof-meta copy-in">
             <strong>4.9</strong>
             <span>Top Rated Service<br />Verified by Google</span>
           </div>
@@ -713,13 +1039,13 @@ function App() {
       </section>
 
       <section className="faq-scene">
-        <div className="faq-heading reveal-compose">
-          <span className="section-label reveal-item">Essential intelligence</span>
-          <h2 className="reveal-item">Questions, answered<br />with clarity.</h2>
+        <div className="faq-heading" data-reveal>
+          <span className="section-label copy-in">Essential intelligence</span>
+          <h2><span className="heading-rise">Questions, answered<br />with clarity.</span></h2>
         </div>
         <div className="faq-list">
           {faqs.map(([question, answer], index) => (
-            <article className={`faq-item reveal ${openFaq === index ? "is-open" : ""}`} key={question} style={revealDelay(index, 45)}>
+            <article className={`faq-item ${openFaq === index ? "is-open" : ""}`} key={question}>
               <button
                 onClick={() => setOpenFaq(openFaq === index ? -1 : index)}
                 aria-expanded={openFaq === index}
@@ -734,14 +1060,14 @@ function App() {
         </div>
       </section>
 
-      <section className="consultation" id="consultation" onPointerMove={handleGlow}>
-        <div className="consultation-bg" data-depth="10" style={{ backgroundImage: `url(${skyline})` }} />
-        <div className="consultation-copy reveal-compose">
-          <span className="section-label reveal-item">Your next move starts here</span>
-          <h2 className="reveal-item">Dubai is ready.<br /><em>Are you?</em></h2>
-          <p className="reveal-item">Get expert guidance and a clear route to your UAE business setup.</p>
+      <section className="consultation" id="consultation" onPointerMove={handleGlow} data-scene="consult">
+        <div className="consultation-bg" style={{ backgroundImage: `url(${skyline})` }} />
+        <div className="consultation-copy" data-reveal>
+          <span className="section-label copy-in">Your next move starts here</span>
+          <h2 className="heading-rise">Dubai is ready.<br /><em>Are you?</em></h2>
+          <p className="copy-in">Get expert guidance and a clear route to your UAE business setup.</p>
         </div>
-        <form className="consultation-form glass reveal" onSubmit={handleSubmit} style={revealDelay(1, 110)}>
+        <form className="consultation-form glass" onSubmit={handleSubmit}>
           {submitted ? (
             <div className="success-message" role="status">
               <span>Request received</span>
@@ -777,7 +1103,7 @@ function App() {
       </section>
 
       <footer>
-        <div className="footer-top reveal">
+        <div className="footer-top">
           <BrandMark />
           <p>UAE business setup,<br />told with clarity.</p>
           <a className="text-link" href="#top">Back to top ↑</a>
