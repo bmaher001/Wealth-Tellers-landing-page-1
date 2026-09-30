@@ -2,14 +2,93 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 
 const asset = (path: string) => `${import.meta.env.BASE_URL}${path}`;
 
-const skyline =
-  "https://images.unsplash.com/flagged/photo-1559717201-fbb671ff56b7?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&q=88&w=2200";
-const tower =
-  "https://images.unsplash.com/photo-1634007626524-f47fa37810a7?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&q=86&w=1600";
-const boardroom =
-  "https://images.unsplash.com/photo-1706074740295-d7a79c079562?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&q=86&w=1800";
-const cityNight =
-  "https://images.unsplash.com/photo-1708361089093-beef4c4584e7?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&q=88&w=2200";
+type SceneAsset = {
+  name: string;
+  mobile: number;
+  desktop: number;
+  width: number;
+  height: number;
+};
+
+const scenes = {
+  skyline: { name: "skyline", mobile: 1800, desktop: 2400, width: 2400, height: 1600 },
+  tower: { name: "tower", mobile: 1100, desktop: 2000, width: 2000, height: 2999 },
+  boardroom: { name: "boardroom", mobile: 1400, desktop: 2000, width: 2000, height: 1125 },
+  cityNight: { name: "city-night", mobile: 1600, desktop: 2400, width: 2400, height: 1706 },
+} as const satisfies Record<string, SceneAsset>;
+
+function sceneFile(scene: SceneAsset, width: number, ext: string) {
+  return asset(`assets/scenes/${scene.name}-${width}.${ext}`);
+}
+
+function ScenePicture({
+  scene,
+  className,
+  eager = false,
+  alt = "",
+}: {
+  scene: SceneAsset;
+  className?: string;
+  eager?: boolean;
+  alt?: string;
+}) {
+  return (
+    <picture className={className}>
+      <source media="(max-width: 759px)" type="image/avif" srcSet={sceneFile(scene, scene.mobile, "avif")} />
+      <source media="(min-width: 760px)" type="image/avif" srcSet={sceneFile(scene, scene.desktop, "avif")} />
+      <source media="(max-width: 759px)" type="image/webp" srcSet={sceneFile(scene, scene.mobile, "webp")} />
+      <source media="(min-width: 760px)" type="image/webp" srcSet={sceneFile(scene, scene.desktop, "webp")} />
+      <img
+        src={sceneFile(scene, eager ? scene.desktop : scene.mobile, "jpg")}
+        alt={alt}
+        width={scene.width}
+        height={scene.height}
+        loading={eager ? "eager" : "lazy"}
+        fetchPriority={eager ? "high" : "low"}
+        decoding={eager ? "auto" : "async"}
+      />
+    </picture>
+  );
+}
+
+function DeferredCover({ className, scene }: { className: string; scene: SceneAsset }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    let cancelled = false;
+
+    const apply = () => {
+      if (cancelled || !node) return;
+      const narrow = window.matchMedia("(max-width: 759px)").matches;
+      const width = narrow ? scene.mobile : scene.desktop;
+      const avif = sceneFile(scene, width, "avif");
+      const webp = sceneFile(scene, width, "webp");
+      const jpg = sceneFile(scene, width, "jpg");
+      const modern = CSS.supports("background-image", `image-set(url("${avif}") type("image/avif"))`);
+      node.style.backgroundImage = modern
+        ? `image-set(url("${avif}") type("image/avif"), url("${webp}") type("image/webp"), url("${jpg}") type("image/jpeg"))`
+        : `url("${webp}")`;
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        apply();
+        observer.disconnect();
+      },
+      { rootMargin: "240px 0px" },
+    );
+    observer.observe(node);
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, [scene]);
+
+  return <div ref={ref} className={className} />;
+}
 const calculatorUrl =
   "https://nrgmr82u42l.typeform.com/costcalculator1?utm_source=xxxxx&utm_medium=xxxxx&utm_campaign=xxxxx&utm_adgroup=xxxxx#keyword=xxxxx";
 
@@ -31,6 +110,33 @@ const goldenFeatures = [
   "Free Access to Co-Working Space",
   "Dedicated Relationship Manager",
 ];
+
+type PlanId = "standard" | "golden";
+
+const plans = {
+  standard: {
+    id: "standard" as const,
+    index: "01",
+    name: "Standard Package",
+    short: "Standard",
+    price: "4,888",
+    currency: "AED",
+    eyebrow: "The essential launch",
+    note: "",
+  },
+  golden: {
+    id: "golden" as const,
+    index: "02",
+    name: "Golden Package",
+    short: "Golden",
+    price: "10,800",
+    currency: "AED",
+    eyebrow: "The complete launch",
+    note: "Residency included",
+  },
+};
+
+const planOrder: PlanId[] = ["standard", "golden"];
 
 const structures = [
   {
@@ -76,77 +182,107 @@ const experts = [
   {
     name: "Natalia Davydova",
     role: "HNWI Division Director",
-    image: asset("assets/team/01.jpg"),
+    image: asset("assets/team/01.webp"),
+    width: 795,
+    height: 1000,
   },
   {
     name: "Ramy Ahmed",
     role: "MENA Region Head — Private Client Services",
-    image: asset("assets/team/02.jpg"),
+    image: asset("assets/team/02.webp"),
+    width: 795,
+    height: 1000,
   },
   {
     name: "Rana Shetiwy",
     role: "Operations Director",
-    image: asset("assets/team/03.jpg"),
+    image: asset("assets/team/03.webp"),
+    width: 795,
+    height: 1000,
   },
   {
     name: "Thamseer Veettil",
     role: "COO",
-    image: asset("assets/team/04.jpg"),
+    image: asset("assets/team/04.webp"),
+    width: 795,
+    height: 1000,
   },
   {
     name: "Likhith Raj Mijar",
     role: "System Administrator",
-    image: asset("assets/team/05.jpg"),
+    image: asset("assets/team/05.webp"),
+    width: 795,
+    height: 1000,
   },
   {
     name: "Asmaa Fouad",
     role: "HR Manager",
-    image: asset("assets/team/06.jpg"),
+    image: asset("assets/team/06.webp"),
+    width: 795,
+    height: 1000,
   },
   {
     name: "Karen",
     role: "Operation Coordinator",
-    image: asset("assets/team/07.jpg"),
+    image: asset("assets/team/07.webp"),
+    width: 795,
+    height: 1000,
   },
   {
     name: "Grenville Fernandes",
     role: "Business Setup Advisor",
-    image: asset("assets/team/08.jpg"),
+    image: asset("assets/team/08.webp"),
+    width: 795,
+    height: 1000,
   },
   {
     name: "Arbaz Shaikh",
     role: "Business Setup Advisor",
-    image: asset("assets/team/09.jpg"),
+    image: asset("assets/team/09.webp"),
+    width: 795,
+    height: 1000,
   },
   {
     name: "Asif Palliyalil Mohammed",
     role: "Head of Finance",
-    image: asset("assets/team/10.jpg"),
+    image: asset("assets/team/10.webp"),
+    width: 795,
+    height: 1000,
   },
   {
     name: "Muhamed Hamza",
     role: "Business Setup Advisor",
-    image: asset("assets/team/11.jpg"),
+    image: asset("assets/team/11.webp"),
+    width: 795,
+    height: 1000,
   },
   {
     name: "Mohamed Magdi",
     role: "Public Relations Manager",
-    image: asset("assets/team/12.jpg"),
+    image: asset("assets/team/12.webp"),
+    width: 864,
+    height: 1128,
   },
   {
     name: "Shahzeb Sehar",
     role: "Relationship Manager",
-    image: asset("assets/team/13.jpg"),
+    image: asset("assets/team/13.webp"),
+    width: 795,
+    height: 1000,
   },
   {
     name: "Andrii Poiendynok",
     role: "Legal Director",
-    image: asset("assets/team/14.jpg"),
+    image: asset("assets/team/14.webp"),
+    width: 1100,
+    height: 1649,
   },
   {
     name: "Khalid Hassan",
     role: "Sales Manager",
-    image: asset("assets/team/15.jpg"),
+    image: asset("assets/team/15.webp"),
+    width: 795,
+    height: 1000,
   },
 ];
 
@@ -176,6 +312,95 @@ const faqs = [
     "Use our free cost calculator to get an instant, transparent estimate.",
   ],
 ];
+
+const pageUrl = "https://works.bishoyzaki.com/wealth-tellers/";
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${pageUrl}#organization`,
+      name: "Wealth Tellers",
+      url: pageUrl,
+      logo: `${pageUrl}assets/wealth-tellers-logo.png`,
+      description:
+        "Wealth Tellers is a business consultancy for UAE company formation in Dubai.",
+      areaServed: {
+        "@type": "Country",
+        name: "United Arab Emirates",
+      },
+      contactPoint: {
+        "@type": "ContactPoint",
+        contactType: "customer support",
+        url: "https://wealthtellers.com/contact-us/",
+      },
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${pageUrl}#website`,
+      name: "Wealth Tellers",
+      url: pageUrl,
+      inLanguage: "en",
+      publisher: { "@id": `${pageUrl}#organization` },
+    },
+    {
+      "@type": "ProfessionalService",
+      "@id": `${pageUrl}#service`,
+      name: "UAE business setup consultancy",
+      url: pageUrl,
+      description:
+        "Expert guidance for a fast, transparent and secure UAE business setup in Dubai, from the first decision to final approval.",
+      provider: { "@id": `${pageUrl}#organization` },
+      areaServed: [
+        { "@type": "City", name: "Dubai" },
+        { "@type": "Country", name: "United Arab Emirates" },
+      ],
+      serviceType: [
+        "Mainland company formation",
+        "Free Zone company formation",
+        "Offshore company formation",
+      ],
+      hasOfferCatalog: {
+        "@type": "OfferCatalog",
+        name: "UAE business setup packages",
+        itemListElement: [
+          {
+            "@type": "Offer",
+            name: "Standard Package",
+            description: `The essential launch. Includes ${standardFeatures.join(", ")}.`,
+            price: "4888",
+            priceCurrency: "AED",
+            url: `${pageUrl}#packages`,
+            availability: "https://schema.org/InStock",
+          },
+          {
+            "@type": "Offer",
+            name: "Golden Package",
+            description: `The complete launch, with residency included. Includes ${goldenFeatures.join(", ")}.`,
+            price: "10800",
+            priceCurrency: "AED",
+            url: `${pageUrl}#packages`,
+            availability: "https://schema.org/InStock",
+          },
+        ],
+      },
+    },
+    {
+      "@type": "FAQPage",
+      "@id": `${pageUrl}#faq`,
+      url: `${pageUrl}#faq`,
+      mainEntity: faqs.map(([question, answer]) => ({
+        "@type": "Question",
+        name: question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: answer,
+        },
+      })),
+    },
+  ],
+};
 
 function formatCount(value: number, group: boolean) {
   return group ? value.toLocaleString("en-US") : String(value);
@@ -274,7 +499,8 @@ function SettleFigure({
   const className = `settle-figure${offer ? " offer-value" : ""}${padded ? " is-padded" : ""}`;
 
   return (
-    <span ref={ref} className={className} aria-label={formatCount(to, group)}>
+    <span ref={ref} className={className}>
+      <span className="visually-hidden">{formatCount(to, group)}</span>
       <span aria-hidden="true">{formatCount(value, group)}</span>
     </span>
   );
@@ -315,12 +541,16 @@ function ExpertPortrait({
 
   return (
     <div className="expert-portrait">
-      <img src={experts[current].image} alt="" />
+      <img src={experts[current].image} alt="" width={experts[current].width} height={experts[current].height} loading="lazy" decoding="async" />
       {incoming !== null && incoming !== current && (
         <img
           className="is-incoming"
           src={experts[incoming].image}
           alt=""
+          width={experts[incoming].width}
+          height={experts[incoming].height}
+          loading="lazy"
+          decoding="async"
           key={incoming}
           onAnimationEnd={() => {
             setCurrent(incoming);
@@ -405,10 +635,22 @@ function Arrow() {
   );
 }
 
+function SelectionMark({ selected }: { selected: boolean }) {
+  return (
+    <span className={`selection-mark ${selected ? "is-selected" : ""}`} aria-hidden="true">
+      {selected && (
+        <svg viewBox="0 0 16 16">
+          <path d="M3.4 8.2 6.3 11.1 12.6 4.8" />
+        </svg>
+      )}
+    </span>
+  );
+}
+
 function BrandMark({ dark = false }: { dark?: boolean }) {
   return (
     <a className={`brand ${dark ? "brand-dark" : ""}`} href="#top" aria-label="Wealth Tellers home">
-      <img src={asset("assets/wealth-tellers-logo.png")} alt="Wealth Tellers" />
+      <img src={asset("assets/wealth-tellers-logo.png")} alt="Wealth Tellers" width={150} height={65} />
     </a>
   );
 }
@@ -421,6 +663,7 @@ function App() {
   const displayedExpert = hoveredExpert ?? selectedExpert;
   const [openFaq, setOpenFaq] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const [submittedPlan, setSubmittedPlan] = useState<PlanId>("golden");
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const heroRef = useRef<HTMLElement>(null);
   const processRef = useRef<HTMLElement>(null);
@@ -486,6 +729,7 @@ function App() {
       if (hero) {
         const progress = Math.min(window.scrollY / (window.innerHeight * 0.85), 1);
         hero.style.setProperty("--hero-progress", reduced ? "0" : String(progress));
+        if (!reduced && window.scrollY > 0) hero.classList.add("is-parallax");
       }
 
       if (reduced) return;
@@ -649,13 +893,34 @@ function App() {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setSubmittedPlan(activePlan);
     setSubmitted(true);
   };
 
-  const features = activePlan === "standard" ? standardFeatures : goldenFeatures;
+  const plan = plans[activePlan];
+  const structuredJson = JSON.stringify(structuredData).replace(/</g, "\\u003c");
+
+  const onPlanTabsKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const current = planOrder.indexOf(activePlan);
+    let next: PlanId | null = null;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      next = planOrder[(current + 1) % planOrder.length];
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      next = planOrder[(current - 1 + planOrder.length) % planOrder.length];
+    } else if (event.key === "Home") {
+      next = "standard";
+    } else if (event.key === "End") {
+      next = "golden";
+    }
+    if (!next) return;
+    event.preventDefault();
+    setActivePlan(next);
+    document.getElementById(`plan-tab-${next}`)?.focus();
+  };
 
   return (
     <main id="top">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredJson }} />
       <div className="scroll-line" aria-hidden="true" />
       <header className={`nav-shell ${scrolled ? "is-compact" : ""}`}>
         <nav className="nav-glass" aria-label="Main navigation">
@@ -706,7 +971,7 @@ function App() {
       </header>
 
       <section className="hero" ref={heroRef}>
-        <div className="hero-image" style={{ backgroundImage: `url(${skyline})` }} />
+        <ScenePicture scene={scenes.skyline} className="hero-image" eager alt="" />
         <div className="hero-grain" />
         <div className="hero-glow" />
         <div className="hero-content">
@@ -766,8 +1031,9 @@ function App() {
         </div>
       </section>
 
-      <section className="signal-scene">
-        <div className="signal-track" aria-label="Key benefits">
+      <section className="signal-scene" aria-labelledby="benefits-heading">
+        <h2 id="benefits-heading" className="visually-hidden">Business setup benefits</h2>
+        <div className="signal-track">
           {[
             {
               key: "ownership" as const,
@@ -820,7 +1086,7 @@ function App() {
       </section>
 
       <section className="image-expanse">
-        <div className="expanse-image" style={{ backgroundImage: `url(${tower})` }} />
+        <DeferredCover className="expanse-image" scene={scenes.tower} />
         <div className="expanse-overlay" />
         <p className="vertical-caption">Dubai · Designed for possibility</p>
         <div className="expanse-copy" data-reveal>
@@ -835,7 +1101,8 @@ function App() {
         </div>
       </section>
 
-      <section className="structures" id="structures">
+      <section className="structures" id="services">
+        <span id="structures" className="section-anchor" />
         <div className="structures-intro" data-reveal>
           <span className="section-label copy-in">Choose your structure</span>
           <h2 className="heading-glide">One destination.<br />Three strategic routes.</h2>
@@ -869,7 +1136,8 @@ function App() {
       </section>
 
       <section className="process-scene" id="process" ref={processRef}>
-        <div className="process-photo" style={{ backgroundImage: `url(${boardroom})` }}>
+        <div className="process-photo">
+          <ScenePicture scene={scenes.boardroom} alt="" />
           <div className="process-heading" data-reveal>
             <span className="section-label copy-in">The Wealth Tellers method</span>
             <h2 className="heading-rise">From idea<br />to license.</h2>
@@ -943,7 +1211,7 @@ function App() {
                 <Arrow />
               </button>
             </div>
-            <div className="directory-list" role="list" aria-label="Wealth Tellers experts">
+            <div className="directory-list">
               {experts.map((expert, index) => (
                 <button
                   className={selectedExpert === index ? "is-active" : ""}
@@ -954,11 +1222,9 @@ function App() {
                     setHoveredExpert((current) => (current === index ? null : current))
                   }
                   type="button"
-                  role="listitem"
-                  aria-label={`View ${expert.name}, ${expert.role}`}
                   key={expert.name}
                 >
-                  <img className="expert-thumb" src={expert.image} alt="" loading="lazy" />
+                  <img className="expert-thumb" src={expert.image} alt="" width={expert.width} height={expert.height} loading="lazy" decoding="async" />
                   <span>{String(index + 1).padStart(2, "0")}</span>
                   <strong>{expert.name}</strong>
                   <small>{expert.role}</small>
@@ -977,7 +1243,7 @@ function App() {
         </div>
         <div className="calculator-copy">
           <span className="section-label cost-kicker">Know before you launch</span>
-          <h2 className="cost-title" aria-label="Your UAE setup cost, made clear.">
+          <h2 className="cost-title">
             <span className="cost-mask"><span>Your UAE setup</span></span>
             <span className="cost-mask"><span>cost, made</span></span>
             <span className="cost-mask"><span>clear.</span></span>
@@ -1001,9 +1267,12 @@ function App() {
           </button>
           <small className="cost-fine">Final pricing may vary based on activity, approvals and facility requirements.</small>
         </div>
-        <div className="calculator-figure" aria-hidden="true">
+        <div className="calculator-figure">
           <span className="cost-currency">AED</span>
-          <strong className="cost-amount">4,8<span className="cost-tail">88</span></strong>
+          <strong className="cost-amount">
+            <span className="visually-hidden">4,888</span>
+            <span aria-hidden="true">4,8<span className="cost-tail">88</span></span>
+          </strong>
           <div className="calc-rule"><i /></div>
           <p className="cost-caption">Indicative starting offer</p>
         </div>
@@ -1019,66 +1288,103 @@ function App() {
           className={`pricing-stage glass-dark is-${activePlan}`}
           onPointerMove={handleGlow}
         >
-          <div className="plan-tabs" role="tablist" aria-label="Business setup packages">
-            <button
-              role="tab"
-              aria-selected={activePlan === "standard"}
-              onClick={() => setActivePlan("standard")}
-            >
-              <span>01</span> Standard
-            </button>
-            <button
-              role="tab"
-              aria-selected={activePlan === "golden"}
-              onClick={() => setActivePlan("golden")}
-            >
-              <span>02</span> Golden <i>Residency included</i>
-            </button>
+          <div
+            className="plan-tabs"
+            role="tablist"
+            aria-label="Business setup packages"
+            onKeyDown={onPlanTabsKeyDown}
+          >
+            {planOrder.map((id) => {
+              const item = plans[id];
+              const selected = activePlan === id;
+              return (
+                <button
+                  key={id}
+                  id={`plan-tab-${id}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  aria-controls={`plan-panel-${id}`}
+                  tabIndex={selected ? 0 : -1}
+                  onClick={() => setActivePlan(id)}
+                >
+                  <span className="plan-tab-index">{item.index}</span>
+                  <span className="plan-tab-copy">
+                    <strong>{item.short}</strong>
+                    <em>
+                      <small>{item.currency}</small>
+                      {item.price}
+                    </em>
+                    {item.note ? <i className="plan-tab-note">{item.note}</i> : null}
+                  </span>
+                  <span className="plan-tab-state">
+                    <SelectionMark selected={selected} />
+                    {selected ? "Selected" : "Select"}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-          <div className="plan-display">
-            <div className="plan-main">
-              <span className="plan-eyebrow">
-                {activePlan === "golden" ? "The complete launch" : "The essential launch"}
-              </span>
-              {activePlan === "golden" && (
-                <span className="golden-crown" aria-hidden="true">
-                  <svg viewBox="0 0 64 42">
-                    <path d="M7 33 3 10l16 11L32 4l13 17 16-11-4 23H7Z" />
-                    <path d="M9 38h46" />
-                    <circle cx="3" cy="9" r="2" />
-                    <circle cx="32" cy="3" r="2" />
-                    <circle cx="61" cy="9" r="2" />
-                  </svg>
-                </span>
-              )}
-              <h3>{activePlan === "golden" ? "Golden Package" : "Standard Package"}</h3>
-              <p>
-                A focused path to establishing your UAE business, supported by a dedicated
-                relationship manager.
-              </p>
-              <a
-                className={`button ${
-                  activePlan === "golden" ? "button-gold" : "button-plan-standard"
-                }`}
-                href="#consultation"
+          {planOrder.map((id) => {
+            const item = plans[id];
+            const selected = activePlan === id;
+            const itemFeatures = id === "standard" ? standardFeatures : goldenFeatures;
+            return (
+              <div
+                className="plan-display"
+                id={`plan-panel-${id}`}
+                role="tabpanel"
+                key={id}
+                hidden={!selected}
+                aria-labelledby={`plan-tab-${id}`}
               >
-                Get the offer <Arrow />
-              </a>
-            </div>
-            <ul className="plan-features">
-              {features.map((feature) => (
-                <li key={feature}>
-                  <span>✓</span>{feature}
-                </li>
-              ))}
-            </ul>
-          </div>
+                <div className="plan-main">
+                  <span className="plan-eyebrow">{item.eyebrow}</span>
+                  {id === "golden" && (
+                    <span className="golden-crown" aria-hidden="true">
+                      <svg viewBox="0 0 64 42">
+                        <path d="M7 33 3 10l16 11L32 4l13 17 16-11-4 23H7Z" />
+                        <path d="M9 38h46" />
+                        <circle cx="3" cy="9" r="2" />
+                        <circle cx="32" cy="3" r="2" />
+                        <circle cx="61" cy="9" r="2" />
+                      </svg>
+                    </span>
+                  )}
+                  <h3>{item.name}</h3>
+                  <p className="plan-price">
+                    <small>{item.currency}</small>
+                    <strong>{item.price}</strong>
+                  </p>
+                  <p>
+                    A focused path to establishing your UAE business, supported by a dedicated
+                    relationship manager.
+                  </p>
+                  <a
+                    className={`button ${
+                      id === "golden" ? "button-gold" : "button-plan-standard"
+                    }`}
+                    href="#consultation"
+                  >
+                    Start with {item.short} <Arrow />
+                  </a>
+                </div>
+                <ul className="plan-features">
+                  {itemFeatures.map((feature) => (
+                    <li key={feature}>
+                      <span>✓</span>{feature}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
           <p className="pricing-note">Additional services and inclusions are available on consultation.</p>
         </div>
       </section>
 
       <section className="proof-scene">
-        <div className="proof-image" style={{ backgroundImage: `url(${cityNight})` }} />
+        <DeferredCover className="proof-image" scene={scenes.cityNight} />
         <div className="proof-shade" />
         <div className="proof-copy" data-reveal>
           <div className="stars copy-in">★★★★★</div>
@@ -1092,7 +1398,7 @@ function App() {
         </div>
       </section>
 
-      <section className="faq-scene">
+      <section className="faq-scene" id="faq">
         <div className="faq-heading" data-reveal>
           <span className="section-label copy-in">Essential intelligence</span>
           <h2><span className="heading-rise">Questions, answered<br />with clarity.</span></h2>
@@ -1101,40 +1407,79 @@ function App() {
           {faqs.map(([question, answer], index) => (
             <article className={`faq-item ${openFaq === index ? "is-open" : ""}`} key={question}>
               <button
+                type="button"
                 onClick={() => setOpenFaq(openFaq === index ? -1 : index)}
                 aria-expanded={openFaq === index}
+                aria-controls={`faq-answer-${index}`}
               >
                 <span>0{index + 1}</span>
                 <strong>{question}</strong>
                 <i aria-hidden="true" />
               </button>
-              <div><p>{answer}</p></div>
+              <div id={`faq-answer-${index}`}><p>{answer}</p></div>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="consultation" id="consultation" onPointerMove={handleGlow} data-scene="consult">
-        <div className="consultation-bg" style={{ backgroundImage: `url(${skyline})` }} />
+      <section className={`consultation is-${activePlan}`} id="contact" onPointerMove={handleGlow} data-scene="consult">
+        <span id="consultation" className="section-anchor" />
+        <ScenePicture scene={scenes.skyline} className="consultation-bg" alt="" />
         <div className="consultation-copy" data-reveal>
           <span className="section-label copy-in">Your next move starts here</span>
           <h2 className="heading-rise">Dubai is ready.<br /><em>Are you?</em></h2>
           <p className="copy-in">Get expert guidance and a clear route to your UAE business setup.</p>
+          <div className="consult-offer" aria-live="polite">
+            <span>Selected package</span>
+            <strong>{plan.name}</strong>
+            <p className="consult-offer-price">
+              <small>{plan.currency}</small>
+              <b>{plan.price}</b>
+            </p>
+          </div>
         </div>
-        <form className="consultation-form glass" onSubmit={handleSubmit}>
+        <form className={`consultation-form glass is-${activePlan}`} onSubmit={handleSubmit}>
           {submitted ? (
             <div className="success-message" role="status">
               <span>Request received</span>
               <h3>Thank you.</h3>
-              <p>A Wealth Tellers advisor will contact you shortly.</p>
+              <p>
+                {`A Wealth Tellers advisor will contact you about the ${plans[submittedPlan].name}, ${plans[submittedPlan].currency} ${plans[submittedPlan].price}.`}
+              </p>
               <button type="button" onClick={() => setSubmitted(false)}>Submit another request</button>
             </div>
           ) : (
             <>
               <div className="form-head">
                 <span>Private consultation</span>
-                <strong>Get a call back</strong>
+                <strong>Start with {plan.short}</strong>
               </div>
+              <div className="plan-choice" role="group" aria-label="Package of interest">
+                <span className="plan-choice-label">Package of interest</span>
+                <div>
+                  {planOrder.map((id) => {
+                    const item = plans[id];
+                    const selected = activePlan === id;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        className={`is-${id}`}
+                        aria-pressed={selected}
+                        onClick={() => setActivePlan(id)}
+                      >
+                        <SelectionMark selected={selected} />
+                        <span>
+                          <strong>{item.short}</strong>
+                          <em>{item.currency} {item.price}</em>
+                        </span>
+                        <i>{selected ? "Selected" : "Select"}</i>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <input type="hidden" name="package" value={`${plan.name} · ${plan.currency} ${plan.price}`} />
               <label>
                 <span>Full name</span>
                 <input required name="name" autoComplete="name" placeholder="Your name" />
@@ -1147,10 +1492,15 @@ function App() {
                 <span>Nature of business</span>
                 <input required name="business" placeholder="Tell us what you’re building" />
               </label>
-              <button className="button button-gold" type="submit">
-                Request a consultation <Arrow />
+              <button
+                className={`button ${activePlan === "golden" ? "button-gold" : "button-plan-standard"}`}
+                type="submit"
+              >
+                Start with {plan.short} <Arrow />
               </button>
-              <small>100% Privacy Guaranteed</small>
+              <small>
+                {plan.name} · {plan.currency} {plan.price} · 100% privacy guaranteed
+              </small>
             </>
           )}
         </form>

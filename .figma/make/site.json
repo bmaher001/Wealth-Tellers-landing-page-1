@@ -1,12 +1,8 @@
 {
-  "title": "Wealth Tellers",
+  "title": "Wealth Tellers | Dubai Business Setup Consultancy",
+  "description": "Wealth Tellers helps founders set up a UAE business in Dubai, including 100% ownership and remote formation. Standard AED 4,888. Golden AED 10,800.",
   "language": "en",
-  "description": "Delivers a premium, cinematic landing page experience with rich photography and interactive glass UI designed to engage business leaders and premium clients.",
-  "robots": {
-    "index": false
-  },
-  "accessibility": {
-    "addBypassLinks": false,
-    "ignoreReducedMotion": false
+  "openGraph": {
+    "image": "https://works.bishoyzaki.com/wealth-tellers/assets/scenes/skyline-2400.jpg"
   }
 }
